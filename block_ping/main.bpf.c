@@ -1,10 +1,9 @@
-#include <stdint.h>
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/ip.h>
-#include <linux/icmp.h>
+#include <linux/types.h>
 #include <bpf/bpf_helpers.h>
-#include <arpa/inet.h>
+#include <bpf/bpf_endian.h>
 
 #include "main.h"
 
@@ -12,8 +11,8 @@
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, 1024);
-    __type(key, uint32_t);
-    __type(value, uint32_t);
+    __type(key, __u32);
+    __type(value, __u32);
 } ping_hash SEC(".maps");
 
 struct {
@@ -30,16 +29,14 @@ int detect_ping(struct xdp_md *ctx) {
 
     struct ethhdr *eth = (struct ethhdr *)data;
     struct iphdr *ip = (struct iphdr *)((char *)data + sizeof(*eth));
-    struct icmphdr *icmp = (struct icmphdr *)(ip + 1);
 
     
-    if (data + sizeof(*eth) + sizeof(*ip) + sizeof(*icmp) > data_end) {
+    if (data + sizeof(*eth) + sizeof(*ip) > data_end) {
         return  XDP_PASS;
-
     }
 
     
-    if (eth->h_proto != htons(ETH_P_IP)) {
+    if (eth->h_proto != bpf_htons(ETH_P_IP)) {
         return XDP_PASS;
     }
 

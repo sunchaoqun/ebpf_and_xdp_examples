@@ -1,1 +1,15 @@
 This is an example for eBPF xdp application.
+
+yum install make clang bpftool libbpf-devel
+
+
+# 1. 附加 XDP 程序到网卡
+sudo ip link set dev ens3 xdpgeneric obj main.bpf.o sec xdp
+
+# 2. 查看
+ip link show ens3
+
+# 3. 卸载
+sudo ip link set dev ens3 xdpgeneric off
+
+sudo hping3 -S -p 9015 --flood 10.0.1.234

@@ -1,5 +1,5 @@
 struct data_t {
-   int proto;
-   int saddr;
-   int daddr;
+   __u32 proto;
+   __u32 saddr;
+   __u32 daddr;
 };
