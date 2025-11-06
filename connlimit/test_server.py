@@ -14,17 +14,15 @@ conn_count = 0
 def handle_client(conn, addr, conn_id):
     """Handle individual client connection"""
     try:
-        # Don't send welcome message automatically (causes nc to stop in background)
-        # Only send data when client sends first
+        # Send welcome message
+        conn.send(f"Welcome! Connection #{conn_id}\n".encode())
         
         # Keep connection alive, echo any received data
         while True:
             data = conn.recv(1024)
             if not data:
                 break
-            # Echo back with connection info
-            response = f"[Connection #{conn_id}] Received: {data.decode()}"
-            conn.send(response.encode())
+            conn.send(data)  # Echo back
     except:
         pass
     finally:
