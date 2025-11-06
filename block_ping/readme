@@ -13,3 +13,29 @@ ip link show ens3
 sudo ip link set dev ens3 xdpgeneric off
 
 sudo hping3 -S -p 9015 --flood 10.0.1.234
+
+sudo dnf install -y nghttp2
+
+
+nghttp --no-verify-peer --upgrade https://54.254.145.222:9015/dummy
+
+
+nghttp --no-verify-peer --upgrade https://10.0.1.234:9015/dummy
+
+
+nghttp --upgrade https://2.chaoqun.us/dummy
+
+
+for i in {1..40}; do
+    nghttp --no-verify-peer --upgrade https://10.0.1.234:9015/dummy &
+done
+
+
+for i in {1..400}; do
+    nghttp --upgrade https://2.chaoqun.us/dummy &
+done
+
+
+
+
+sudo dnf install java-24-amazon-corretto
