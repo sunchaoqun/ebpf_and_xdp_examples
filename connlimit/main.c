@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 #include <linux/bpf.h>
 #include <linux/if_link.h>
 #include <bpf/bpf.h>
@@ -17,6 +18,8 @@
 static int g_ifindex = 0;
 static FILE *g_log_file = NULL;
 static struct main_bpf *g_skel = NULL;
+static struct bpf_link *g_tcp_destroy_link = NULL;
+static struct bpf_link *g_tcp_state_link = NULL;
 
 void handle_sigint(int sig) {
     printf("\nTerminating...\n");
@@ -33,6 +36,16 @@ void handle_sigint(int sig) {
         fprintf(g_log_file, "\n=== [%s] XDP Connection Limiter Stopped ===\n", timestamp);
         fclose(g_log_file);
         printf("Log file closed\n");
+    }
+    
+    if (g_tcp_state_link) {
+        bpf_link__destroy(g_tcp_state_link);
+        g_tcp_state_link = NULL;
+    }
+
+    if (g_tcp_destroy_link) {
+        bpf_link__destroy(g_tcp_destroy_link);
+        g_tcp_destroy_link = NULL;
     }
     
     if (g_skel) {
@@ -160,6 +173,33 @@ int main(int argc, char *argv[]) {
     g_skel = main_bpf__open_and_load();
     if (!g_skel) {
         fprintf(stderr, "Failed to open and load BPF skeleton\n");
+        return 1;
+    }
+
+    // Attach tracepoint program for TCP state transitions
+    g_tcp_state_link = bpf_program__attach_tracepoint(g_skel->progs.handle_tcp_state,
+                                                      "sock", "inet_sock_set_state");
+    if (!g_tcp_state_link) {
+        fprintf(stderr, "Failed to attach tracepoint sock/inet_sock_set_state\n");
+        return 1;
+    }
+    err = libbpf_get_error(g_tcp_state_link);
+    if (err) {
+        fprintf(stderr, "Tracepoint attach error: %s\n", strerror(-err));
+        g_tcp_state_link = NULL;
+        return 1;
+    }
+
+    g_tcp_destroy_link = bpf_program__attach_tracepoint(g_skel->progs.handle_tcp_destroy,
+                                                        "tcp", "tcp_destroy_sock");
+    if (!g_tcp_destroy_link) {
+        fprintf(stderr, "Failed to attach tracepoint tcp/tcp_destroy_sock\n");
+        return 1;
+    }
+    err = libbpf_get_error(g_tcp_destroy_link);
+    if (err) {
+        fprintf(stderr, "Tracepoint attach error: %s\n", strerror(-err));
+        g_tcp_destroy_link = NULL;
         return 1;
     }
 
